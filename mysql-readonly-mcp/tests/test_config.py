@@ -1,17 +1,37 @@
 from pathlib import Path
+import sys
+from textwrap import dedent
 
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from mysql_readonly_mcp.config import (
     ConfigResolutionError,
-    ENV_FILE_NAME,
     load_config,
-)
+)  # noqa: E402
+
+
+PROJECT_ENV_FILE = ".mysql.mcp.env"
+MYSQL_ENV_KEYS = [
+    "MYSQL_HOST",
+    "MYSQL_PORT",
+    "MYSQL_USER",
+    "MYSQL_PASSWORD",
+    "MYSQL_DATABASE",
+    "MYSQL_CONNECT_TIMEOUT",
+    "MYSQL_MAX_ROWS",
+]
+
+
+def clear_mysql_env(monkeypatch):
+    for key in MYSQL_ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
 
 
 def write_env(project: Path, content: str):
     project.mkdir()
-    (project / ENV_FILE_NAME).write_text(content, encoding="utf-8")
+    (project / PROJECT_ENV_FILE).write_text(dedent(content).lstrip(), encoding="utf-8")
 
 
 def test_load_config_reads_project_env_file(tmp_path, monkeypatch):
@@ -29,16 +49,7 @@ def test_load_config_reads_project_env_file(tmp_path, monkeypatch):
         MYSQL_MAX_ROWS=25
         """,
     )
-    for key in [
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "MYSQL_USER",
-        "MYSQL_PASSWORD",
-        "MYSQL_DATABASE",
-        "MYSQL_CONNECT_TIMEOUT",
-        "MYSQL_MAX_ROWS",
-    ]:
-        monkeypatch.delenv(key, raising=False)
+    clear_mysql_env(monkeypatch)
 
     config = load_config(project_path=str(project))
 
@@ -62,16 +73,7 @@ def test_process_environment_overrides_project_env_file(tmp_path, monkeypatch):
         MYSQL_PASSWORD=file-pass
         """,
     )
-    for key in [
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "MYSQL_USER",
-        "MYSQL_PASSWORD",
-        "MYSQL_DATABASE",
-        "MYSQL_CONNECT_TIMEOUT",
-        "MYSQL_MAX_ROWS",
-    ]:
-        monkeypatch.delenv(key, raising=False)
+    clear_mysql_env(monkeypatch)
     monkeypatch.setenv("MYSQL_HOST", "env-host")
     monkeypatch.setenv("MYSQL_PASSWORD", "env-pass")
 
@@ -82,9 +84,10 @@ def test_process_environment_overrides_project_env_file(tmp_path, monkeypatch):
     assert config.password == "env-pass"
 
 
-def test_missing_project_env_returns_structured_error(tmp_path):
+def test_missing_project_env_returns_structured_error(tmp_path, monkeypatch):
     project = tmp_path / "app"
     project.mkdir()
+    clear_mysql_env(monkeypatch)
 
     with pytest.raises(ConfigResolutionError) as exc_info:
         load_config(project_path=str(project))
@@ -92,12 +95,13 @@ def test_missing_project_env_returns_structured_error(tmp_path):
     payload = exc_info.value.to_response()
     assert payload["error"] == "missing_mysql_mcp_env"
     assert payload["project_path"] == str(project.resolve())
-    assert payload["expected_file"] == str(project.resolve() / ENV_FILE_NAME)
+    assert payload["expected_file"] == str(project.resolve() / PROJECT_ENV_FILE)
     assert "MYSQL_HOST=127.0.0.1" in payload["template"]
 
 
-def test_invalid_project_path_returns_structured_error(tmp_path):
+def test_invalid_project_path_returns_structured_error(tmp_path, monkeypatch):
     missing = tmp_path / "missing"
+    clear_mysql_env(monkeypatch)
 
     with pytest.raises(ConfigResolutionError) as exc_info:
         load_config(project_path=str(missing))
@@ -105,7 +109,7 @@ def test_invalid_project_path_returns_structured_error(tmp_path):
     assert exc_info.value.to_response()["error"] == "invalid_project_path"
 
 
-def test_missing_required_key_returns_structured_error(tmp_path):
+def test_missing_required_key_returns_structured_error(tmp_path, monkeypatch):
     project = tmp_path / "app"
     write_env(
         project,
@@ -115,6 +119,7 @@ def test_missing_required_key_returns_structured_error(tmp_path):
         MYSQL_USER=readonly
         """,
     )
+    clear_mysql_env(monkeypatch)
 
     with pytest.raises(ConfigResolutionError) as exc_info:
         load_config(project_path=str(project))
