@@ -69,6 +69,15 @@ The parser should support simple `KEY=value` lines, blank lines, and `#` comment
 
 Process environment variables may override values loaded from `.mysql.mcp.env`. This lets advanced users keep secrets outside the repo while still using project-local defaults.
 
+Required key presence:
+
+- `MYSQL_HOST`
+- `MYSQL_PORT`
+- `MYSQL_USER`
+- `MYSQL_PASSWORD`
+
+`MYSQL_PASSWORD` may be present with an empty value for local passwordless accounts, but the key should still exist so the user has made that choice explicitly. `MYSQL_DATABASE`, `MYSQL_CONNECT_TIMEOUT`, and `MYSQL_MAX_ROWS` are optional.
+
 ## Missing Configuration Behavior
 
 When `project_path` is provided and `<project_path>/.mysql.mcp.env` does not exist, MCP tools should return a structured response instead of attempting a database connection:
@@ -103,7 +112,7 @@ Update `mysql-schema-context/SKILL.md` so agents:
 
 ## Error Handling
 
-- Invalid `project_path`: return a structured `invalid_project_path` error.
+- Invalid `project_path`: return a structured `invalid_project_path` error. A valid project path must resolve to an existing directory. The MCP should compute the env path as exactly `<resolved_project_path>/.mysql.mcp.env`; callers should not provide arbitrary env filenames in tool arguments.
 - Missing env file: return `missing_mysql_mcp_env`.
 - Missing required values in the env file: return `incomplete_mysql_mcp_env` with the missing keys.
 - Invalid integer values: keep current default behavior for optional integer settings, but report invalid required values if any are introduced later.
