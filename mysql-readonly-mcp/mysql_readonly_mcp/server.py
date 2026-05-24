@@ -1,8 +1,21 @@
 """MCP transport wrapper for the MySQL read-only tools."""
 
-from .config import load_config
+from .config import ConfigResolutionError, load_config
 from .db import MySQLDatabase
 from .tools import MySQLTools
+
+
+def _build_tools(project_path: str = None):
+    config = load_config(project_path=project_path)
+    return MySQLTools(MySQLDatabase(config), configured_max_rows=config.max_rows)
+
+
+def _with_tools(project_path: str = None, operation=None):
+    try:
+        tools = _build_tools(project_path=project_path)
+        return operation(tools)
+    except ConfigResolutionError as exc:
+        return exc.to_response()
 
 
 def build_server():
@@ -11,44 +24,57 @@ def build_server():
     except ModuleNotFoundError as exc:
         raise RuntimeError("mcp is required. Install with: python -m pip install mcp") from exc
 
-    config = load_config()
-    tools = MySQLTools(MySQLDatabase(config), configured_max_rows=config.max_rows)
     mcp = FastMCP("mysql-readonly")
 
     @mcp.tool()
-    def mysql_ping():
+    def mysql_ping(project_path: str = None):
         """Verify the MySQL connection without returning secrets."""
-        return tools.mysql_ping()
+        return _with_tools(project_path, lambda tools: tools.mysql_ping())
 
     @mcp.tool()
-    def mysql_list_schemas(include_system: bool = False):
+    def mysql_list_schemas(include_system: bool = False, project_path: str = None):
         """List MySQL schemas."""
-        return tools.mysql_list_schemas(include_system=include_system)
+        return _with_tools(
+            project_path,
+            lambda tools: tools.mysql_list_schemas(include_system=include_system),
+        )
 
     @mcp.tool()
-    def mysql_list_tables(schema: str):
+    def mysql_list_tables(schema: str, project_path: str = None):
         """List tables for a schema."""
-        return tools.mysql_list_tables(schema)
+        return _with_tools(project_path, lambda tools: tools.mysql_list_tables(schema))
 
     @mcp.tool()
-    def mysql_describe_table(schema: str, table: str):
+    def mysql_describe_table(schema: str, table: str, project_path: str = None):
         """Describe columns for a schema table."""
-        return tools.mysql_describe_table(schema, table)
+        return _with_tools(
+            project_path,
+            lambda tools: tools.mysql_describe_table(schema, table),
+        )
 
     @mcp.tool()
-    def mysql_show_create_table(schema: str, table: str):
+    def mysql_show_create_table(schema: str, table: str, project_path: str = None):
         """Return SHOW CREATE TABLE output for one table."""
-        return tools.mysql_show_create_table(schema, table)
+        return _with_tools(
+            project_path,
+            lambda tools: tools.mysql_show_create_table(schema, table),
+        )
 
     @mcp.tool()
-    def mysql_list_relationships(schema: str):
+    def mysql_list_relationships(schema: str, project_path: str = None):
         """List keys, indexes, foreign keys, and inferred relationship hints."""
-        return tools.mysql_list_relationships(schema)
+        return _with_tools(
+            project_path,
+            lambda tools: tools.mysql_list_relationships(schema),
+        )
 
     @mcp.tool()
-    def mysql_execute_select(sql: str, max_rows: int = None):
+    def mysql_execute_select(sql: str, max_rows: int = None, project_path: str = None):
         """Run one read-only SELECT or WITH ... SELECT statement with a row cap."""
-        return tools.mysql_execute_select(sql, max_rows=max_rows)
+        return _with_tools(
+            project_path,
+            lambda tools: tools.mysql_execute_select(sql, max_rows=max_rows),
+        )
 
     return mcp
 
