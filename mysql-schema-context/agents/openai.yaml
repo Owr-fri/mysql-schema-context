@@ -1,0 +1,4 @@
+interface:
+  display_name: "MySQL Schema Context"
+  short_description: "Understand MySQL schemas safely before writing SQL or code."
+  default_prompt: "Use this skill to inspect MySQL metadata, infer table and field meaning, map relationships, and request permission before sample data access."
