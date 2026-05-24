@@ -127,3 +127,71 @@ def test_missing_required_key_returns_structured_error(tmp_path, monkeypatch):
     payload = exc_info.value.to_response()
     assert payload["error"] == "incomplete_mysql_mcp_env"
     assert payload["missing_keys"] == ["MYSQL_PASSWORD"]
+
+
+def test_blank_required_project_values_return_structured_error(tmp_path, monkeypatch):
+    clear_mysql_env(monkeypatch)
+    project = tmp_path / "app"
+    write_env(
+        project,
+        """
+        MYSQL_HOST=
+        MYSQL_PORT=
+        MYSQL_USER=
+        MYSQL_PASSWORD=
+        """,
+    )
+
+    with pytest.raises(ConfigResolutionError) as exc_info:
+        load_config(project_path=str(project))
+
+    payload = exc_info.value.to_response()
+    assert payload["error"] == "incomplete_mysql_mcp_env"
+    assert payload["missing_keys"] == ["MYSQL_HOST", "MYSQL_PORT", "MYSQL_USER"]
+
+
+def test_invalid_required_project_port_returns_structured_error(
+    tmp_path, monkeypatch
+):
+    clear_mysql_env(monkeypatch)
+    project = tmp_path / "app"
+    write_env(
+        project,
+        """
+        MYSQL_HOST=127.0.0.1
+        MYSQL_PORT=not-a-port
+        MYSQL_USER=readonly
+        MYSQL_PASSWORD=
+        """,
+    )
+
+    with pytest.raises(ConfigResolutionError) as exc_info:
+        load_config(project_path=str(project))
+
+    payload = exc_info.value.to_response()
+    assert payload["error"] == "incomplete_mysql_mcp_env"
+    assert payload["missing_keys"] == ["MYSQL_PORT"]
+
+
+def test_invalid_required_port_from_environment_returns_structured_error(
+    tmp_path, monkeypatch
+):
+    clear_mysql_env(monkeypatch)
+    project = tmp_path / "app"
+    write_env(
+        project,
+        """
+        MYSQL_HOST=127.0.0.1
+        MYSQL_PORT=3306
+        MYSQL_USER=readonly
+        MYSQL_PASSWORD=
+        """,
+    )
+    monkeypatch.setenv("MYSQL_PORT", "not-a-port")
+
+    with pytest.raises(ConfigResolutionError) as exc_info:
+        load_config(project_path=str(project))
+
+    payload = exc_info.value.to_response()
+    assert payload["error"] == "incomplete_mysql_mcp_env"
+    assert payload["missing_keys"] == ["MYSQL_PORT"]

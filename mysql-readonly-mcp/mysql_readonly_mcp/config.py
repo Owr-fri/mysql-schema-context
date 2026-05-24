@@ -64,9 +64,7 @@ def load_config(project_path: str = None) -> MySQLConfig:
             )
 
         values = _parse_env_file(env_file)
-        missing_keys = [
-            key for key in REQUIRED_ENV_KEYS if key not in values and key not in os.environ
-        ]
+        missing_keys = _invalid_required_project_keys(values)
         if missing_keys:
             raise ConfigResolutionError(
                 {
@@ -110,6 +108,32 @@ def _parse_env_file(path: Path) -> dict:
         key, value = stripped.split("=", 1)
         values[key.strip()] = value.strip()
     return values
+
+
+def _invalid_required_project_keys(values: dict) -> list:
+    invalid_keys = []
+    for key in REQUIRED_ENV_KEYS:
+        value = _effective_project_value(values, key)
+        if key == "MYSQL_PASSWORD":
+            if value is None:
+                invalid_keys.append(key)
+            continue
+
+        if value is None or value.strip() == "":
+            invalid_keys.append(key)
+            continue
+
+        if key == "MYSQL_PORT":
+            try:
+                int(value.strip())
+            except ValueError:
+                invalid_keys.append(key)
+
+    return invalid_keys
+
+
+def _effective_project_value(values: dict, name: str):
+    return os.environ[name] if name in os.environ else values.get(name)
 
 
 def _value(values: dict, name: str, default: str) -> str:
