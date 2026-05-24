@@ -38,9 +38,9 @@ MYSQL_CONNECT_TIMEOUT=5
 MYSQL_MAX_ROWS=100
 ```
 
-Do not fill in real passwords for the user. Tell the user to use a read-only database account and rerun the MCP query after the file is complete.
+If the current project is a git repo, create or update `<current project root>/.gitignore` so `.mysql.mcp.env` is ignored before prompting the user to fill in credentials. Create `.gitignore` if it does not already exist.
 
-Ensure `.mysql.mcp.env` is ignored by git. If the current project has a `.gitignore`, add `.mysql.mcp.env` if it is missing.
+Do not ask the user to paste passwords or other secrets into chat. Do not fill in real passwords for the user. Tell the user to enter credentials locally in `<current project root>/.mysql.mcp.env`, use a read-only database account, and rerun the MCP query after the file is complete.
 
 ## Core Rules
 
