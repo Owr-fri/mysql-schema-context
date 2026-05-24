@@ -29,6 +29,8 @@ $env:MYSQL_MAX_ROWS='100'
 
 Use a database account with read-only permissions. Do not use a privileged production account.
 
+For multi-project use, pass `project_path` to each tool. The server will load `<project_path>/.mysql.mcp.env`. If the file is missing, the tool returns `missing_mysql_mcp_env` with a template.
+
 ## Install
 
 ```powershell
