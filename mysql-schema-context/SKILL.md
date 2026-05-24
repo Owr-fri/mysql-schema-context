@@ -13,12 +13,34 @@ Build database understanding before writing SQL or code. Prefer the companion My
 
 If the `mysql-readonly` MCP server is available, use its tools instead of hand-written discovery SQL:
 
-1. Call `mysql_ping` to verify connectivity.
-2. Call `mysql_list_schemas` and `mysql_list_tables` to find scope.
-3. Call `mysql_describe_table`, `mysql_show_create_table`, and `mysql_list_relationships` before writing SQL or code.
-4. Use `mysql_execute_select` only after metadata is insufficient and row-level access is appropriate for the task.
+When calling MySQL MCP tools, pass the current project root as `project_path` on every call. The MCP uses this to load `<project_path>/.mysql.mcp.env`.
+
+1. Call `mysql_ping(project_path=current_project_root)` to verify connectivity.
+2. Call `mysql_list_schemas(project_path=current_project_root)` and `mysql_list_tables(schema, project_path=current_project_root)` to find scope.
+3. Call `mysql_describe_table`, `mysql_show_create_table`, and `mysql_list_relationships` with the same `project_path` before writing SQL or code.
+4. Use `mysql_execute_select(sql, max_rows, project_path=current_project_root)` only after metadata is insufficient and row-level access is appropriate for the task.
 
 If MCP tools are unavailable, use `references/mysql-discovery.md` to guide manual read-only discovery through the available database client.
+
+## Project MCP Configuration
+
+If a MySQL MCP tool returns `missing_mysql_mcp_env`, stop database discovery and help the user create `<current project root>/.mysql.mcp.env`.
+
+Use this template:
+
+```env
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+MYSQL_USER=readonly_user
+MYSQL_PASSWORD=
+MYSQL_DATABASE=
+MYSQL_CONNECT_TIMEOUT=5
+MYSQL_MAX_ROWS=100
+```
+
+Do not fill in real passwords for the user. Tell the user to use a read-only database account and rerun the MCP query after the file is complete.
+
+Ensure `.mysql.mcp.env` is ignored by git. If the current project has a `.gitignore`, add `.mysql.mcp.env` if it is missing.
 
 ## Core Rules
 
