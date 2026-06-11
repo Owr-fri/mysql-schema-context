@@ -34,7 +34,7 @@ class MySQLDatabase:
 
     def ping(self) -> Dict[str, Any]:
         rows = self._query("SELECT 1 AS ok")
-        return {"ok": bool(rows and rows[0].get("ok") == 1), "config": self.config.safe_summary()}
+        return {"ok": bool(rows and rows[0].get("ok") == 1)}
 
     def list_schemas(self, include_system: bool = False) -> List[Dict[str, Any]]:
         rows = self._query(
