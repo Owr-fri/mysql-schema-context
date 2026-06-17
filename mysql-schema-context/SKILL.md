@@ -18,6 +18,9 @@ When calling MySQL MCP tools, pass the current project root as `project_path` on
 1. Call `mysql_ping(project_path=current_project_root)` to verify connectivity.
 2. Call `mysql_list_schemas(project_path=current_project_root)` and `mysql_list_tables(schema, project_path=current_project_root)` to find scope.
 3. Call `mysql_describe_table`, `mysql_show_create_table`, and `mysql_list_relationships` with the same `project_path` before writing SQL or code.
+   - For each relevant table, call `mysql_describe_table` once and reuse the returned column list in the current reasoning context.
+   - Do not call `mysql_describe_table` once per column. If only several known columns are needed, pass them together with `columns=["col_a", "col_b"]`.
+   - Use `mysql_show_create_table` after `mysql_describe_table` only when the task depends on full DDL details such as composite indexes, unique constraints, foreign keys, engine/options, or exact create syntax.
 4. Use `mysql_execute_select(sql, max_rows, project_path=current_project_root)` only after metadata is insufficient and row-level access is appropriate for the task.
 
 If MCP tools are unavailable, use `references/mysql-discovery.md` to guide manual read-only discovery through the available database client.

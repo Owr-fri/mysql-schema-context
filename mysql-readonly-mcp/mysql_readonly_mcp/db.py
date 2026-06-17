@@ -59,9 +59,13 @@ class MySQLDatabase:
             (schema,),
         )
 
-    def describe_table(self, schema: str, table: str) -> List[Dict[str, Any]]:
-        return self._query(
-            """
+    def describe_table(
+        self,
+        schema: str,
+        table: str,
+        columns: Optional[Sequence[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        sql = """
             SELECT
               table_name,
               ordinal_position,
@@ -75,10 +79,17 @@ class MySQLDatabase:
             FROM information_schema.columns
             WHERE table_schema = %s
               AND table_name = %s
-            ORDER BY ordinal_position
-            """,
-            (schema, table),
-        )
+            """
+        params: List[Any] = [schema, table]
+        if columns is not None:
+            column_names = [column for column in columns if column]
+            if not column_names:
+                return []
+            placeholders = ", ".join(["%s"] * len(column_names))
+            sql += f"  AND column_name IN ({placeholders})\n"
+            params.extend(column_names)
+        sql += "            ORDER BY ordinal_position\n"
+        return self._query(sql, tuple(params))
 
     def show_create_table(self, schema: str, table: str) -> Dict[str, Any]:
         sql = "SHOW CREATE TABLE {}.{}".format(quote_identifier(schema), quote_identifier(table))

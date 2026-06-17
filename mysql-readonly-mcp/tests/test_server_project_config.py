@@ -19,6 +19,10 @@ class FakeTools:
         self.calls.append(("mysql_list_tables", schema))
         return [{"table_name": "users"}]
 
+    def mysql_describe_table(self, schema, table, columns=None):
+        self.calls.append(("mysql_describe_table", schema, table, columns))
+        return [{"column_name": "id"}]
+
 
 def test_with_tools_returns_config_error_payload(monkeypatch):
     class FakeConfigError(Exception):
@@ -116,6 +120,7 @@ def test_build_server_tool_annotations_and_project_path_forwarding(monkeypatch):
 
     assert _allows_optional(mcp.tools["mysql_ping"].__annotations__["project_path"], str)
     assert _allows_optional(mcp.tools["mysql_execute_select"].__annotations__["max_rows"], int)
+    assert _allows_optional(mcp.tools["mysql_describe_table"].__annotations__["columns"], list)
 
     result = mcp.tools["mysql_list_tables"]("shop", project_path="E:/app")
 
@@ -123,9 +128,55 @@ def test_build_server_tool_annotations_and_project_path_forwarding(monkeypatch):
     assert result == [{"table_name": "users"}]
 
 
+def test_build_server_describe_table_forwards_column_filter(monkeypatch):
+    class FakeFastMCP:
+        def __init__(self, name):
+            self.name = name
+            self.tools = {}
+
+        def tool(self):
+            def decorator(func):
+                self.tools[func.__name__] = func
+                return func
+
+            return decorator
+
+    fake_mcp = types.ModuleType("mcp")
+    fake_server = types.ModuleType("mcp.server")
+    fake_fastmcp = types.ModuleType("mcp.server.fastmcp")
+    fake_fastmcp.FastMCP = FakeFastMCP
+    fake_server.fastmcp = fake_fastmcp
+    fake_mcp.server = fake_server
+
+    monkeypatch.setitem(sys.modules, "mcp", fake_mcp)
+    monkeypatch.setitem(sys.modules, "mcp.server", fake_server)
+    monkeypatch.setitem(sys.modules, "mcp.server.fastmcp", fake_fastmcp)
+
+    fake_tools = FakeTools()
+
+    def fake_with_tools(project_path, operation):
+        return operation(fake_tools)
+
+    monkeypatch.setattr(server, "_with_tools", fake_with_tools)
+
+    mcp = server.build_server()
+
+    result = mcp.tools["mysql_describe_table"](
+        "app",
+        "users",
+        columns=["id", "email"],
+        project_path="E:/app",
+    )
+
+    assert result == [{"column_name": "id"}]
+    assert fake_tools.calls == [("mysql_describe_table", "app", "users", ["id", "email"])]
+
+
 def _allows_optional(annotation, expected_type):
+    args = get_args(annotation)
     return (
         annotation == Optional[expected_type]
         or get_origin(annotation) is Union
-        and set(get_args(annotation)) == {expected_type, type(None)}
+        and type(None) in args
+        and any(arg == expected_type or get_origin(arg) is expected_type for arg in args)
     )

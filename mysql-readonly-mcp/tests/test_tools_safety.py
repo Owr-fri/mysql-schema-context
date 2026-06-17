@@ -12,6 +12,7 @@ from mysql_readonly_mcp.tools import MySQLTools  # noqa: E402
 class FakeDB:
     def __init__(self):
         self.executed = []
+        self.described = []
 
     def ping(self):
         return {"ok": True}
@@ -22,7 +23,8 @@ class FakeDB:
     def list_tables(self, schema):
         return [{"table_name": "users", "table_type": "BASE TABLE"}]
 
-    def describe_table(self, schema, table):
+    def describe_table(self, schema, table, columns=None):
+        self.described.append((schema, table, columns))
         return [{"column_name": "id", "column_type": "bigint"}]
 
     def show_create_table(self, schema, table):
@@ -75,3 +77,12 @@ def test_metadata_tools_delegate_to_db():
     assert tools.mysql_describe_table("app", "users")[0]["column_name"] == "id"
     assert "CREATE TABLE" in tools.mysql_show_create_table("app", "users")["create_table"]
     assert tools.mysql_list_relationships("app")["indexes"] == []
+
+
+def test_describe_table_can_request_multiple_columns_in_one_call():
+    db = FakeDB()
+    tools = MySQLTools(db)
+
+    tools.mysql_describe_table("app", "users", columns=["id", "email"])
+
+    assert db.described == [("app", "users", ["id", "email"])]

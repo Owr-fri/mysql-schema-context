@@ -7,12 +7,24 @@ Python MCP server that exposes controlled MySQL schema discovery and read-only `
 - `mysql_ping`
 - `mysql_list_schemas`
 - `mysql_list_tables`
-- `mysql_describe_table`
+- `mysql_describe_table(schema, table, columns=None)`
 - `mysql_show_create_table`
 - `mysql_list_relationships`
 - `mysql_execute_select`
 
 `mysql_execute_select` only accepts one `SELECT` or `WITH ... SELECT` statement, rejects write/DDL/file-access patterns, and enforces a row cap.
+
+## Metadata Usage
+
+Use `mysql_describe_table` as a table-level metadata tool. Omit `columns` to return all columns for one table in a single call, then reuse that result while reasoning about the table. Do not call `mysql_describe_table` once per column.
+
+If only several known columns are needed, pass them together:
+
+```json
+{"schema": "app", "table": "users", "columns": ["id", "email"]}
+```
+
+Use `mysql_show_create_table` after `mysql_describe_table` when full DDL details are required, such as composite indexes, unique constraints, foreign keys, engine/options, or exact create syntax.
 
 ## Environment
 

@@ -1,6 +1,6 @@
 """Tool behavior for the MySQL read-only MCP server."""
 
-from typing import Optional
+from typing import Optional, Sequence
 
 from .sql_guard import assert_readonly_select, normalize_max_rows
 
@@ -19,8 +19,13 @@ class MySQLTools:
     def mysql_list_tables(self, schema: str):
         return self.db.list_tables(schema)
 
-    def mysql_describe_table(self, schema: str, table: str):
-        return self.db.describe_table(schema, table)
+    def mysql_describe_table(
+        self,
+        schema: str,
+        table: str,
+        columns: Optional[Sequence[str]] = None,
+    ):
+        return self.db.describe_table(schema, table, columns=columns)
 
     def mysql_show_create_table(self, schema: str, table: str):
         return self.db.show_create_table(schema, table)

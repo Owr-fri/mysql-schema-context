@@ -1,6 +1,6 @@
 """MCP transport wrapper for the MySQL read-only tools."""
 
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 from .config import ConfigResolutionError, load_config
 from .db import MySQLDatabase
@@ -54,11 +54,16 @@ def build_server():
         schema: str,
         table: str,
         project_path: Optional[str] = None,
+        columns: Optional[List[str]] = None,
     ):
-        """Describe columns for a schema table."""
+        """Describe column metadata for one table in a single call.
+
+        Omit columns to return all columns. Pass columns only to filter several
+        known columns at once; do not call this tool once per column.
+        """
         return _with_tools(
             project_path,
-            lambda tools: tools.mysql_describe_table(schema, table),
+            lambda tools: tools.mysql_describe_table(schema, table, columns=columns),
         )
 
     @mcp.tool()
